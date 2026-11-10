@@ -33,7 +33,12 @@ jobs:
 
       - name: Commit dist if changed
         run: |
-          if [ -z "${git status --procelain dist/}" ]; then
+          if [ !d "dist" ]; then
+            echo "dist dir is not found"
+            exit 1
+          fi
+          
+          if [ -z "$(git status --procelain dist/)" ]; then
             echo "dist/ not changed, escaped"
             exit 0
           fi
