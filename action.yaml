@@ -1,0 +1,43 @@
+name: 'Verify Gitea Mirror Sync'
+description: ''
+author: 'Hang.J'
+
+inputs:
+  gitea-url:
+    description: 'Gitea Url'
+    required: true
+  gitea-owner:
+    description: 'Gitea mirror repo owner'
+    required: true
+  gitea-repo:
+    description: 'Gitea mirror repo name'
+    required: true
+  gitea-token:
+    description: 'Gitea access token'
+    required: true
+  branch:
+    description: 'Git branch to verify'
+    required: false
+    default: 'main'
+  upstream-owner:
+    description: 'Upstream repo owner'
+    required: true
+  upstream-repo:
+    description: 'Upstream repo name'
+    required: true
+  upstream-token:
+    description: 'Github token'
+    required: false
+    default: ${{ github.token }}
+  max-retries:
+    description: 'Max retries'
+    required: false
+    default: '20'
+  retry-interval:
+    description: ''
+    required: false
+    default: '15'
+
+runs:
+  using: 'node24'
+  main: 'dist/index.js'
