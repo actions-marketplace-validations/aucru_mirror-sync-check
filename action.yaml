@@ -41,3 +41,7 @@ inputs:
 runs:
   using: 'node24'
   main: 'dist/index.js'
+
+branding:
+  icon: "refresh-cw"
+  color: "green"
