@@ -38,7 +38,7 @@ jobs:
             exit 1
           fi
           
-          if [ -z "$(git status --procelain dist/)" ]; then
+          if [ -z "$(git status --porcelain dist/)" ]; then
             echo "dist/ not changed, escaped"
             exit 0
           fi

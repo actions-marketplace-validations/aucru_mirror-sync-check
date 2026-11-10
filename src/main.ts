@@ -12,8 +12,8 @@ async function run(): Promise<void> {
             upstreamOwner: core.getInput('upstream-owner', { required: true }),
             upstreamRepo: core.getInput('upstream-repo', { required: true }),
             upstreamToken: core.getInput('upstream-token') || process.env.GITHUB_TOKEN || '',
-            maxRetries: parseInt(core.getInput('max-retries') || '20', 10),
-            retryInterval: parseInt(core.getInput('retry-interval') || '15', 10),
+            maxRetries: Number(core.getInput('max-retries') || '20'),
+            retryInterval: Number(core.getInput('retry-interval') || '15'),
         };
 
         await verifyMirror(config);
@@ -27,4 +27,4 @@ async function run(): Promise<void> {
     }
 }
 
-run();
+void run();

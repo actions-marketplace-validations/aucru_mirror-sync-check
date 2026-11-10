@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "ncc build src/main.ts -o dist --source-map",
+    "build": "esbuild src/main.ts --bundle --platform=node --target=node24 --outfile=dist/index.js",
     "test": "jest",
     "all": "pnpm run build && pnpm run test"
   },
@@ -28,8 +28,8 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^26.6.6",
     "@vercel/ncc": "^0.45.0",
+    "esbuild": "^0.28.2",
     "jest": "^30.5.2",
-    "ts-jest": "^29.4.15",
-    "typescript": "6.0.3"
+    "ts-jest": "^29.4.15"
   }
 }
