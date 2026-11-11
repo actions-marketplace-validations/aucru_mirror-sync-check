@@ -1,5 +1,7 @@
 # Mirror Sync Check
 
+[简体中文](README.md) | [English](README.en.md)
+
 检查 Gitea 拉取镜像是否与 GitHub 上游分支同步；提交不一致时触发 Gitea 镜像同步，并轮询确认结果。
 
 ## 工作方式
