@@ -1,5 +1,5 @@
 name: 'Verify Gitea Mirror Sync'
-description: ''
+description: 'Verify Gitea mirrors against GitHub upstream branches and trigger synchronization when behind.'
 author: 'Hang.J'
 
 inputs:
@@ -33,7 +33,7 @@ inputs:
     required: false
     default: '20'
   retry-interval:
-    description: ''
+    description: 'Seconds to wait between attempts'
     required: false
     default: '15'
 
