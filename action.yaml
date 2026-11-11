@@ -26,9 +26,8 @@ inputs:
     description: 'Upstream repo name'
     required: true
   upstream-token:
-    description: 'Github token'
+    description: 'Optional GitHub token for the upstream repo; omit for anonymous access to public repos'
     required: false
-    default: ${{ github.token }}
   max-retries:
     description: 'Max retries'
     required: false

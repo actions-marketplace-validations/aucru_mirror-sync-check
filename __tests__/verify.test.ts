@@ -84,6 +84,17 @@ it('fails immediately for authentication errors', async () => {
     expect(client.dispose).toHaveBeenCalledTimes(1);
 });
 
+it.each(['', 'github-pat'])('uses only the configured upstream token: %j', async upstreamToken => {
+    client.getJson.mockResolvedValueOnce(upstream('A')).mockResolvedValueOnce(mirror('A'));
+    await verifyMirror({ ...config, upstreamToken });
+    expect(client.getJson).toHaveBeenNthCalledWith(1,
+        'https://api.github.com/repos/u/r/branches/main',
+        upstreamToken
+            ? { Accept: 'application/vnd.github+json', Authorization: 'Bearer github-pat' }
+            : { Accept: 'application/vnd.github+json' },
+    );
+});
+
 it('preserves the last transient error when retries are exhausted', async () => {
     const error = Object.assign(new Error('Unavailable'), { statusCode: 503 });
     client.getJson.mockRejectedValue(error);

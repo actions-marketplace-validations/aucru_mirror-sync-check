@@ -20345,7 +20345,7 @@ async function run() {
       branch: getInput("branch") || "main",
       upstreamOwner: getInput("upstream-owner", { required: true }),
       upstreamRepo: getInput("upstream-repo", { required: true }),
-      upstreamToken: getInput("upstream-token") || process.env.GITHUB_TOKEN || "",
+      upstreamToken: getInput("upstream-token"),
       maxRetries: Number(getInput("max-retries") || "20"),
       retryInterval: Number(getInput("retry-interval") || "15")
     };

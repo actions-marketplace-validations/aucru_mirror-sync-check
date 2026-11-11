@@ -11,7 +11,7 @@ async function run(): Promise<void> {
             branch: core.getInput('branch') || 'main',
             upstreamOwner: core.getInput('upstream-owner', { required: true }),
             upstreamRepo: core.getInput('upstream-repo', { required: true }),
-            upstreamToken: core.getInput('upstream-token') || process.env.GITHUB_TOKEN || '',
+            upstreamToken: core.getInput('upstream-token'),
             maxRetries: Number(core.getInput('max-retries') || '20'),
             retryInterval: Number(core.getInput('retry-interval') || '15'),
         };
