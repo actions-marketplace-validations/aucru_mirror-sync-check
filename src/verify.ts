@@ -34,7 +34,9 @@ async function getUpstreamSha(config: MirrorConfig, client: http.HttpClient): Pr
         headers['Authorization'] = `Bearer ${config.upstreamToken}`;
     }
 
+    core.debug(`GitHub upstream: GET ${url}; authentication=${config.upstreamToken ? 'token' : 'anonymous'}`);
     const res = await client.getJson<{ commit: { sha: string } }>(url, headers);
+    core.debug(`GitHub upstream: HTTP ${res.statusCode}`);
 
     if (!res.result?.commit?.sha) {
         throw new Error(`Failed to get upstream SHA: HTTP ${res.statusCode}`);
@@ -47,9 +49,11 @@ async function getGiteaSha(config: MirrorConfig, client: http.HttpClient): Promi
     const base = config.giteaUrl.replace(/\/$/, '');
     const url = `${base}/api/v1/repos/${config.giteaOwner}/${config.giteaRepo}/branches/${config.branch}`;
 
+    core.debug(`Gitea mirror: GET ${url}; authentication=token`);
     const res = await client.getJson<{ commit: { id: string } }>(url, {
         Authorization: `Bearer ${config.giteaToken}`
     });
+    core.debug(`Gitea mirror: HTTP ${res.statusCode}`);
 
     if (res.statusCode === 404) return null;
 
@@ -63,9 +67,11 @@ async function triggerSync(config: MirrorConfig, client: http.HttpClient): Promi
     const url = `${base}/api/v1/repos/${config.giteaOwner}/${config.giteaRepo}/mirror-sync`;
     core.info('Triggering Sync...');
 
+    core.debug(`Gitea mirror sync: POST ${url}; authentication=token`);
     const res = await client.postJson(url, {}, {
         Authorization: `Bearer ${config.giteaToken}`
     });
+    core.debug(`Gitea mirror sync: HTTP ${res.statusCode}`);
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
         throw new Error(`Failed to trigger sync. Check your Gitea token or config. HTTP ${res.statusCode}`);
@@ -81,25 +87,35 @@ export async function verifyMirror(config: MirrorConfig): Promise<void> {
         throw new Error('retry-interval must be between 1 and 2147483.647 seconds');
     }
 
+    if (config.giteaToken) core.setSecret(config.giteaToken);
+    if (config.upstreamToken) core.setSecret(config.upstreamToken);
+    core.debug('Mirror Sync Check diagnostics enabled');
     const client = new http.HttpClient('gitea-mirror-check');
     let upstreamSha: string | undefined;
     try {
         for (let i = 1; i <= config.maxRetries; i++) {
             core.info(`Try ${i}/${config.maxRetries}`);
+            let stage = 'GitHub upstream';
             try {
                 upstreamSha = await getUpstreamSha(config, client);
                 core.info(`Upstream Sha: ${upstreamSha}`);
+                stage = 'Gitea mirror';
                 const giteaSha = await getGiteaSha(config, client);
                 if (giteaSha === upstreamSha) {
                     core.info('Sync successful! Mirror is up to date.');
                     return;
                 }
                 core.info(`Gitea Sha: ${giteaSha ?? 'not found'}`);
+                stage = 'Gitea mirror sync';
                 await triggerSync(config, client);
             } catch (error) {
-                if (!isTransientError(error)) throw error;
-                if (i === config.maxRetries) throw error;
-                core.warning(`Transient error on attempt ${i}: ${String(error)}. Retrying...`);
+                const status = (error as { statusCode?: number } | null)?.statusCode;
+                const detail = `${stage} failed${status !== undefined ? ` (HTTP ${status})` : ''}: ${error instanceof Error ? error.message : String(error)}`;
+                core.debug(detail);
+                if (!isTransientError(error) || i === config.maxRetries) {
+                    throw new Error(detail, { cause: error });
+                }
+                core.warning(`Transient error on attempt ${i}: ${detail}. Retrying...`);
             }
 
             if (i < config.maxRetries) {

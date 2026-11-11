@@ -20231,6 +20231,9 @@ var ExitCode;
   ExitCode2[ExitCode2["Success"] = 0] = "Success";
   ExitCode2[ExitCode2["Failure"] = 1] = "Failure";
 })(ExitCode || (ExitCode = {}));
+function setSecret(secret) {
+  issueCommand("add-mask", {}, secret);
+}
 function getInput(name, options) {
   const val = process.env[`INPUT_${name.replace(/ /g, "_").toUpperCase()}`] || "";
   if (options && options.required && !val) {
@@ -20244,6 +20247,9 @@ function getInput(name, options) {
 function setFailed(message) {
   process.exitCode = ExitCode.Failure;
   error(message);
+}
+function debug(message) {
+  issueCommand("debug", {}, message);
 }
 function error(message, properties = {}) {
   issueCommand("error", toCommandProperties(properties), message instanceof Error ? message.toString() : message);
@@ -20270,7 +20276,9 @@ async function getUpstreamSha(config, client) {
   if (config.upstreamToken) {
     headers["Authorization"] = `Bearer ${config.upstreamToken}`;
   }
+  debug(`GitHub upstream: GET ${url}; authentication=${config.upstreamToken ? "token" : "anonymous"}`);
   const res = await client.getJson(url, headers);
+  debug(`GitHub upstream: HTTP ${res.statusCode}`);
   if (!res.result?.commit?.sha) {
     throw new Error(`Failed to get upstream SHA: HTTP ${res.statusCode}`);
   }
@@ -20279,9 +20287,11 @@ async function getUpstreamSha(config, client) {
 async function getGiteaSha(config, client) {
   const base = config.giteaUrl.replace(/\/$/, "");
   const url = `${base}/api/v1/repos/${config.giteaOwner}/${config.giteaRepo}/branches/${config.branch}`;
+  debug(`Gitea mirror: GET ${url}; authentication=token`);
   const res = await client.getJson(url, {
     Authorization: `Bearer ${config.giteaToken}`
   });
+  debug(`Gitea mirror: HTTP ${res.statusCode}`);
   if (res.statusCode === 404) return null;
   if (!res.result?.commit?.id) return null;
   return res.result.commit.id;
@@ -20290,9 +20300,11 @@ async function triggerSync(config, client) {
   const base = config.giteaUrl.replace(/\/$/, "");
   const url = `${base}/api/v1/repos/${config.giteaOwner}/${config.giteaRepo}/mirror-sync`;
   info("Triggering Sync...");
+  debug(`Gitea mirror sync: POST ${url}; authentication=token`);
   const res = await client.postJson(url, {}, {
     Authorization: `Bearer ${config.giteaToken}`
   });
+  debug(`Gitea mirror sync: HTTP ${res.statusCode}`);
   if (res.statusCode < 200 || res.statusCode >= 300) {
     throw new Error(`Failed to trigger sync. Check your Gitea token or config. HTTP ${res.statusCode}`);
   }
@@ -20304,25 +20316,35 @@ async function verifyMirror(config) {
   if (!Number.isFinite(config.retryInterval) || config.retryInterval < 1 || config.retryInterval * 1e3 > 2147483647) {
     throw new Error("retry-interval must be between 1 and 2147483.647 seconds");
   }
+  if (config.giteaToken) setSecret(config.giteaToken);
+  if (config.upstreamToken) setSecret(config.upstreamToken);
+  debug("Mirror Sync Check diagnostics enabled");
   const client = new HttpClient("gitea-mirror-check");
   let upstreamSha;
   try {
     for (let i = 1; i <= config.maxRetries; i++) {
       info(`Try ${i}/${config.maxRetries}`);
+      let stage = "GitHub upstream";
       try {
         upstreamSha = await getUpstreamSha(config, client);
         info(`Upstream Sha: ${upstreamSha}`);
+        stage = "Gitea mirror";
         const giteaSha = await getGiteaSha(config, client);
         if (giteaSha === upstreamSha) {
           info("Sync successful! Mirror is up to date.");
           return;
         }
         info(`Gitea Sha: ${giteaSha ?? "not found"}`);
+        stage = "Gitea mirror sync";
         await triggerSync(config, client);
       } catch (error2) {
-        if (!isTransientError(error2)) throw error2;
-        if (i === config.maxRetries) throw error2;
-        warning(`Transient error on attempt ${i}: ${String(error2)}. Retrying...`);
+        const status = error2?.statusCode;
+        const detail = `${stage} failed${status !== void 0 ? ` (HTTP ${status})` : ""}: ${error2 instanceof Error ? error2.message : String(error2)}`;
+        debug(detail);
+        if (!isTransientError(error2) || i === config.maxRetries) {
+          throw new Error(detail, { cause: error2 });
+        }
+        warning(`Transient error on attempt ${i}: ${detail}. Retrying...`);
       }
       if (i < config.maxRetries) {
         await new Promise((resolve) => setTimeout(resolve, config.retryInterval * 1e3));
