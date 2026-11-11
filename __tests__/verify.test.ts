@@ -13,7 +13,11 @@ const config: MirrorConfig = {
 };
 const upstream = (sha: string) => ({ statusCode: 200, result: { commit: { sha } } });
 const mirror = (id: string) => ({ statusCode: 200, result: { commit: { id } } });
-const client = { getJson: jest.fn<(url: string) => Promise<unknown>>(), postJson: jest.fn<() => Promise<unknown>>(), dispose: jest.fn() };
+const client = {
+    getJson: jest.fn<(url: string, headers?: Record<string, string>) => Promise<unknown>>(),
+    postJson: jest.fn<(url: string, body: unknown, headers?: Record<string, string>) => Promise<unknown>>(),
+    dispose: jest.fn(),
+};
 
 beforeEach(() => {
     jest.useFakeTimers();
@@ -62,6 +66,14 @@ it('accepts the latest SHA on the final attempt', async () => {
         .mockResolvedValueOnce(upstream('B')).mockResolvedValueOnce(mirror('B'));
     await finish();
     expect(client.postJson).toHaveBeenCalledTimes(1);
+    expect(client.getJson).toHaveBeenCalledWith(
+        'https://mirror.example/api/v1/repos/o/r/branches/main',
+        { Authorization: 'Bearer t' },
+    );
+    expect(client.postJson).toHaveBeenCalledWith(
+        'https://mirror.example/api/v1/repos/o/r/mirror-sync', {},
+        { Authorization: 'Bearer t' },
+    );
 });
 
 it('fails immediately for authentication errors', async () => {

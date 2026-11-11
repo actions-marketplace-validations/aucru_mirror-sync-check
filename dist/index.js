@@ -20280,7 +20280,7 @@ async function getGiteaSha(config, client) {
   const base = config.giteaUrl.replace(/\/$/, "");
   const url = `${base}/api/v1/repos/${config.giteaOwner}/${config.giteaRepo}/branches/${config.branch}`;
   const res = await client.getJson(url, {
-    Authorization: `token ${config.giteaToken}`
+    Authorization: `Bearer ${config.giteaToken}`
   });
   if (res.statusCode === 404) return null;
   if (!res.result?.commit?.id) return null;
@@ -20291,7 +20291,7 @@ async function triggerSync(config, client) {
   const url = `${base}/api/v1/repos/${config.giteaOwner}/${config.giteaRepo}/mirror-sync`;
   info("Triggering Sync...");
   const res = await client.postJson(url, {}, {
-    Authorization: `token ${config.giteaToken}`
+    Authorization: `Bearer ${config.giteaToken}`
   });
   if (res.statusCode < 200 || res.statusCode >= 300) {
     throw new Error(`Failed to trigger sync. Check your Gitea token or config. HTTP ${res.statusCode}`);

@@ -48,7 +48,7 @@ async function getGiteaSha(config: MirrorConfig, client: http.HttpClient): Promi
     const url = `${base}/api/v1/repos/${config.giteaOwner}/${config.giteaRepo}/branches/${config.branch}`;
 
     const res = await client.getJson<{ commit: { id: string } }>(url, {
-        Authorization: `token ${config.giteaToken}`
+        Authorization: `Bearer ${config.giteaToken}`
     });
 
     if (res.statusCode === 404) return null;
@@ -64,7 +64,7 @@ async function triggerSync(config: MirrorConfig, client: http.HttpClient): Promi
     core.info('Triggering Sync...');
 
     const res = await client.postJson(url, {}, {
-        Authorization: `token ${config.giteaToken}`
+        Authorization: `Bearer ${config.giteaToken}`
     });
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
